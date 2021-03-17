@@ -10,63 +10,61 @@ class Game:
         self.grid = Grid()
         self.ai = AI()
         self.table_state = self.grid.table
+        self.cells = ''.join(self.table_state.values())
+
         self.game_state = 'Game not finished'
 
     def start(self):
         player1, player2 = self.menu.start()
-        while self.game_state == 'Game not finished':
-            cells = ''.join(self.table_state.values())
-            self.grid.draw_table(cells)
-            if self.check_game_state(cells):
-                break
-            self.move(cells, player1, player2)
+        self.grid.draw_table(self.cells)
+        while self.check_game_state():
+            self.move(player1, player2)
+            self.cells = ''.join(self.table_state.values())
+            self.grid.draw_table(self.cells)
 
         print(self.game_state)
 
-    def move(self, cells, player1, player2):
-        sign = 'X' if cells.count('X') - cells.count('O') == 0 else 'O'
+    def move(self, player1, player2):
+        sign = 'X' if self.cells.count('X') - self.cells.count('O') == 0 else 'O'
         if sign == 'X':
-            cell = self.menu.make_move() if player1 == 'user' else self.ai.make_move(player1)
+            cell = self.menu.make_move(self.table_state) if player1 == 'user' \
+                else self.ai.make_move(player1, self.table_state)
         else:
-            cell = self.menu.make_move() if player2 == 'user' else self.ai.make_move(player2)
+            cell = self.menu.make_move(self.table_state) if player2 == 'user' \
+                else self.ai.make_move(player2, self.table_state)
 
-        if self.table_state[cell] != '_':
-            if (sign == 'X' and player1 == 'user') or (sign == 'O' and player2 == 'user'):
-                print('This cell is occupied! Choose another one!')
-            self.move(cells, player1, player2)
-        else:
-            if sign == 'X' and player1 != 'user':
-                print(f'Making move level "{player1}"')
-            elif sign == 'O' and player2 != 'user':
-                print(f'Making move level "{player2}"')
-            self.table_state[cell] = sign
+        self.table_state[cell] = sign
 
-    def check_game_state(self, cells):
+    def check_game_state(self):
         x_pattern = r'(?:X..X..X..|.X..X..X.|..X..X..X|XXX......|...XXX...|......XXX|X...X...X|..X.X.X..)$'
         o_pattern = r'(?:O..O..O..|.O..O..O.|..O..O..O|OOO......|...OOO...|......OOO|O...O...O|..O.O.O..)$'
         # f_pattern = r'(?:_.._.._..|._.._.._.|.._.._.._|___......|...___...|......___|_..._..._|.._._._..)$'
 
-        if match(x_pattern, cells):
+        if match(x_pattern, self.cells):
             self.game_state = 'X wins'
-            return True
-        if match(o_pattern, cells):
+            return False
+        if match(o_pattern, self.cells):
             self.game_state = 'O wins'
-            return True
+            return False
         # if not match(f_pattern, cells):
         #     self.game_state = 'Draw'
-        if cells.find('_') == -1:
+        if self.cells.find('_') == -1:
             self.game_state = 'Draw'
-            return True
+            return False
+        return True
 
 
 class AI:
-    @staticmethod
-    def make_move(level):
+    def make_move(self, level, table_state):
         if level == 'easy':
-            choices = [digit for digit in range(1, Grid.SIZE + 1)]
-            coord_x = choice(choices)
-            coord_y = choice(choices)
-            return coord_x, coord_y
+            return self.easy(table_state)
+
+    @staticmethod
+    def easy(table_state):
+        empty_cells = [coordinates for coordinates, state in table_state.items() if state == '_']
+        coordinates = choice(empty_cells)
+        print('Making move level "easy"')
+        return coordinates
 
 
 class Menu:
@@ -84,7 +82,7 @@ class Menu:
             command = self.init_table_state()
         return command
 
-    def make_move(self):
+    def make_move(self, table_state):
         size = Grid.SIZE
         command = input('Enter the coordinates: ').strip()
         try:
@@ -92,10 +90,14 @@ class Menu:
             coord_x, coord_y = int(coord_x), int(coord_y)
         except ValueError:
             print('You should enter numbers!')
-            coord_x, coord_y = self.make_move()
+            coord_x, coord_y = self.make_move(table_state)
         if not (0 < coord_x < size + 1 and 0 < coord_y < size + 1):
             print(f'Coordinates should be from 1 to {size}!')
-            coord_x, coord_y = self.make_move()
+            coord_x, coord_y = self.make_move(table_state)
+        if table_state[coord_x, coord_y] != '_':
+            print('This cell is occupied! Choose another one!')
+            coord_x, coord_y = self.make_move(table_state)
+
         return coord_x, coord_y
 
     def start(self):
