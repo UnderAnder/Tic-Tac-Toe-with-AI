@@ -11,13 +11,12 @@ class Game:
         self.ai = AI()
         self.table_state = self.grid.table
         self.cells = ''.join(self.table_state.values())
-
         self.game_state = 'Game not finished'
 
     def start(self):
         player1, player2 = self.menu.start()
         self.grid.draw_table(self.cells)
-        while self.check_game_state():
+        while not self.check_game_state():
             self.move(player1, player2)
             self.cells = ''.join(self.table_state.values())
             self.grid.draw_table(self.cells)
@@ -25,46 +24,77 @@ class Game:
         print(self.game_state)
 
     def move(self, player1, player2):
+        table_state = self.table_state
+        # Player choose
         sign = 'X' if self.cells.count('X') - self.cells.count('O') == 0 else 'O'
         if sign == 'X':
-            cell = self.menu.make_move(self.table_state) if player1 == 'user' \
-                else self.ai.make_move(player1, self.table_state)
+            cell = self.menu.make_move(table_state) if player1 == 'user' else self.ai.make_move(player1, table_state)
         else:
-            cell = self.menu.make_move(self.table_state) if player2 == 'user' \
-                else self.ai.make_move(player2, self.table_state)
+            cell = self.menu.make_move(table_state) if player2 == 'user' else self.ai.make_move(player2, table_state)
 
         self.table_state[cell] = sign
 
-    def check_game_state(self):
+    def check_game_state(self, cells=None):
         x_pattern = r'(?:X..X..X..|.X..X..X.|..X..X..X|XXX......|...XXX...|......XXX|X...X...X|..X.X.X..)$'
         o_pattern = r'(?:O..O..O..|.O..O..O.|..O..O..O|OOO......|...OOO...|......OOO|O...O...O|..O.O.O..)$'
-        # f_pattern = r'(?:_.._.._..|._.._.._.|.._.._.._|___......|...___...|......___|_..._..._|.._._._..)$'
+        # For copy board check
+        cells = self.cells if cells is None else cells
 
-        if match(x_pattern, self.cells):
+        if match(x_pattern, cells):
             self.game_state = 'X wins'
-            return False
-        if match(o_pattern, self.cells):
+            return True
+        if match(o_pattern, cells):
             self.game_state = 'O wins'
-            return False
-        # if not match(f_pattern, cells):
-        #     self.game_state = 'Draw'
-        if self.cells.find('_') == -1:
+            return True
+        if cells.find('_') == -1:
             self.game_state = 'Draw'
-            return False
-        return True
+            return True
+        return False
 
 
 class AI:
     def make_move(self, level, table_state):
         if level == 'easy':
             return self.easy(table_state)
+        if level == 'medium':
+            return self.medium(table_state)
 
-    @staticmethod
-    def easy(table_state):
+    def easy(self, table_state):
         empty_cells = [coordinates for coordinates, state in table_state.items() if state == '_']
-        coordinates = choice(empty_cells)
+        coordinates = self.random_move(empty_cells)
         print('Making move level "easy"')
         return coordinates
+
+    def medium(self, table_state):
+        empty_cells = [coordinates for coordinates, state in table_state.items() if state == '_']
+        # Sim game to check win/lose positions
+        table_copy = table_state.copy()
+        sim_game = Game()
+        cells = ''.join(table_copy.values())
+        sign = 'X' if cells.count('X') - cells.count('O') == 0 else 'O'
+        # Win move search
+        for cell in empty_cells:
+            table_copy = table_state.copy()
+            table_copy[cell] = sign
+            cells = ''.join(table_copy.values())
+            if sim_game.check_game_state(cells):
+                print('Making move level "medium"')
+                return cell
+        # Not lose move search
+        for cell in empty_cells:
+            table_copy = table_state.copy()
+            table_copy[cell] = 'O' if sign == 'X' else 'X'
+            cells = ''.join(table_copy.values())
+            if sim_game.check_game_state(cells):
+                print('Making move level "medium"')
+                return cell
+
+        print('Making move level "medium"')
+        return self.random_move(empty_cells)
+
+    @staticmethod
+    def random_move(empty_cells):
+        return choice(empty_cells)
 
 
 class Menu:
@@ -101,7 +131,7 @@ class Menu:
         return coord_x, coord_y
 
     def start(self):
-        variants = ('user', 'easy')
+        variants = ('user', 'easy', 'medium')
         command = input('Input command: ').strip()
         if command == 'exit':
             self.exit()
