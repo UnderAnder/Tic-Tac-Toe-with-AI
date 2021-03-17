@@ -5,11 +5,11 @@ from random import choice
 class Game:
     valid_symbols = 'XO_'
 
-    def __init__(self):
+    def __init__(self, table_state=None):
         self.menu = Menu()
         self.grid = Grid()
         self.ai = AI()
-        self.table_state = self.grid.table
+        self.table_state = self.grid.table if table_state is None else table_state
         self.cells = ''.join(self.table_state.values())
         self.game_state = 'Game not finished'
 
@@ -68,23 +68,21 @@ class AI:
     def medium(self, table_state):
         empty_cells = [coordinates for coordinates, state in table_state.items() if state == '_']
         # Sim game to check win/lose positions
-        table_copy = table_state.copy()
-        sim_game = Game()
-        cells = ''.join(table_copy.values())
-        sign = 'X' if cells.count('X') - cells.count('O') == 0 else 'O'
+        sim_game = Game(table_state.copy())
+        sign = 'X' if sim_game.cells.count('X') - sim_game.cells.count('O') == 0 else 'O'
         # Win move search
         for cell in empty_cells:
-            table_copy = table_state.copy()
-            table_copy[cell] = sign
-            cells = ''.join(table_copy.values())
+            sim_game.table_state = table_state.copy()
+            sim_game.table_state[cell] = sign
+            cells = ''.join(sim_game.table_state.values())
             if sim_game.check_game_state(cells):
                 print('Making move level "medium"')
                 return cell
         # Not lose move search
         for cell in empty_cells:
-            table_copy = table_state.copy()
-            table_copy[cell] = 'O' if sign == 'X' else 'X'
-            cells = ''.join(table_copy.values())
+            sim_game.table_state = table_state.copy()
+            sim_game.table_state[cell]= 'O' if sign == 'X' else 'X'
+            cells = ''.join(sim_game.table_state.values())
             if sim_game.check_game_state(cells):
                 print('Making move level "medium"')
                 return cell
@@ -98,19 +96,20 @@ class AI:
 
 
 class Menu:
-    def init_table_state(self):
-        """
-        Its not used anymore
-        """
-        cells_num = Grid.SIZE ** 2
-        command = input('Enter the cells: ').strip()
-        if len(command) != cells_num:
-            print(f'Enter {cells_num} cells without whitespaces')
-            command = self.init_table_state()
-        if not all(c in Game.valid_symbols for c in command):
-            print('X O _ only')
-            command = self.init_table_state()
-        return command
+    def start(self):
+        variants = ('user', 'easy', 'medium')
+        command = input('Input command: ').strip()
+        if command == 'exit':
+            exit()
+        try:
+            command, player1, player2 = command.split()
+        except ValueError:
+            print('Bad parameters!')
+            player1, player2 = self.start()
+        if command != 'start' or player1 not in variants or player2 not in variants:
+            print('Bad parameters!')
+            player1, player2 = self.start()
+        return player1, player2
 
     def make_move(self, table_state):
         size = Grid.SIZE
@@ -129,25 +128,6 @@ class Menu:
             coord_x, coord_y = self.make_move(table_state)
 
         return coord_x, coord_y
-
-    def start(self):
-        variants = ('user', 'easy', 'medium')
-        command = input('Input command: ').strip()
-        if command == 'exit':
-            self.exit()
-        try:
-            command, player1, player2 = command.split()
-        except ValueError:
-            print('Bad parameters!')
-            player1, player2 = self.start()
-        if command != 'start' or player1 not in variants or player2 not in variants:
-            print('Bad parameters!')
-            player1, player2 = self.start()
-        return player1, player2
-
-    @staticmethod
-    def exit():
-        exit()
 
 
 class Grid:
