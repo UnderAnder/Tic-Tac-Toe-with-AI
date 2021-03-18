@@ -11,6 +11,7 @@ class Game:
         self.ai = AI()
         self.table_state = self.grid.table if table_state is None else table_state
         self.cells = ''.join(self.table_state.values())
+        self.move_count = Grid().SIZE ** 2 - self.cells.count('_')
         self.game_state = 'Game not finished'
 
     def start(self):
@@ -26,12 +27,12 @@ class Game:
     def move(self, player1, player2):
         table_state = self.table_state
         # Player choose
-        sign = 'X' if self.cells.count('X') - self.cells.count('O') == 0 else 'O'
+        sign = 'X' if self.move_count % 2 == 0 else 'O'
         if sign == 'X':
             cell = self.menu.make_move(table_state) if player1 == 'user' else self.ai.make_move(player1, table_state)
         else:
             cell = self.menu.make_move(table_state) if player2 == 'user' else self.ai.make_move(player2, table_state)
-
+        self.move_count += 1
         self.table_state[cell] = sign
 
     def check_game_state(self, cells=None):
@@ -69,23 +70,16 @@ class AI:
         empty_cells = [coordinates for coordinates, state in table_state.items() if state == '_']
         # Sim game to check win/lose positions
         sim_game = Game(table_state.copy())
-        sign = 'X' if sim_game.cells.count('X') - sim_game.cells.count('O') == 0 else 'O'
+        signs = 'XO' if sim_game.move_count % 2 == 0 else 'OX'
         # Win move search
-        for cell in empty_cells:
-            sim_game.table_state = table_state.copy()
-            sim_game.table_state[cell] = sign
-            cells = ''.join(sim_game.table_state.values())
-            if sim_game.check_game_state(cells):
-                print('Making move level "medium"')
-                return cell
-        # Not lose move search
-        for cell in empty_cells:
-            sim_game.table_state = table_state.copy()
-            sim_game.table_state[cell]= 'O' if sign == 'X' else 'X'
-            cells = ''.join(sim_game.table_state.values())
-            if sim_game.check_game_state(cells):
-                print('Making move level "medium"')
-                return cell
+        for sign in signs:
+            for cell in empty_cells:
+                sim_game.table_state = table_state.copy()
+                sim_game.table_state[cell] = sign
+                cells = ''.join(sim_game.table_state.values())
+                if sim_game.check_game_state(cells):
+                    print('Making move level "medium"')
+                    return cell
 
         print('Making move level "medium"')
         return self.random_move(empty_cells)
@@ -97,7 +91,7 @@ class AI:
 
 class Menu:
     def start(self):
-        variants = ('user', 'easy', 'medium')
+        options = ('user', 'easy', 'medium')
         command = input('Input command: ').strip()
         if command == 'exit':
             exit()
@@ -106,7 +100,7 @@ class Menu:
         except ValueError:
             print('Bad parameters!')
             player1, player2 = self.start()
-        if command != 'start' or player1 not in variants or player2 not in variants:
+        if command != 'start' or player1 not in options or player2 not in options:
             print('Bad parameters!')
             player1, player2 = self.start()
         return player1, player2
