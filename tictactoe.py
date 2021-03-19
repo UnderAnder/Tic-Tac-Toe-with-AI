@@ -1,6 +1,7 @@
 from re import match
 from random import choice
 
+
 class Game:
     valid_symbols = 'XO_'
 
@@ -84,8 +85,9 @@ class AI:
     def hard(self, board):
         sim_game = Game(board.copy())
         signs = 'XO' if sim_game.move_count % 2 == 0 else 'OX'
+        player = signs[0]
         # Minimax move search
-        best_move = self.minimax(sim_game, signs[0], signs)
+        best_move = self.minimax(sim_game, player, signs)
 
         print('Making move level "hard"')
         print(best_move)
@@ -111,9 +113,7 @@ class AI:
             else:
                 result = self.minimax(Game(game.board.copy()), cur_player, signs)
                 move[cell] = result[1]
-
             game.board[cell] = '_'
-
             moves[cell] = move[cell]
 
         if cur_player == player:
@@ -130,8 +130,6 @@ class AI:
                     best_move = (coords, score)
 
         return best_move
-
-
 
     @staticmethod
     def random_move(empty_cells):
@@ -154,7 +152,7 @@ class Menu:
             player1, player2 = self.start()
         return player1, player2
 
-    def make_move(self, table_state):
+    def make_move(self, board):
         size = Grid.SIZE
         command = input('Enter the coordinates: ').strip()
         try:
@@ -162,13 +160,13 @@ class Menu:
             coord_x, coord_y = int(coord_x), int(coord_y)
         except ValueError:
             print('You should enter numbers!')
-            coord_x, coord_y = self.make_move(table_state)
+            coord_x, coord_y = self.make_move(board)
         if not (0 < coord_x < size + 1 and 0 < coord_y < size + 1):
             print(f'Coordinates should be from 1 to {size}!')
-            coord_x, coord_y = self.make_move(table_state)
-        if table_state[coord_x, coord_y] != '_':
+            coord_x, coord_y = self.make_move(board)
+        if board[coord_x, coord_y] != '_':
             print('This cell is occupied! Choose another one!')
-            coord_x, coord_y = self.make_move(table_state)
+            coord_x, coord_y = self.make_move(board)
 
         return coord_x, coord_y
 
