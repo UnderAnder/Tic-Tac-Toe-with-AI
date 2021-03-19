@@ -1,88 +1,137 @@
 from re import match
 from random import choice
 
-
 class Game:
     valid_symbols = 'XO_'
 
-    def __init__(self, table_state=None):
+    def __init__(self, board=None):
         self.menu = Menu()
         self.grid = Grid()
         self.ai = AI()
-        self.table_state = self.grid.table if table_state is None else table_state
-        self.cells = ''.join(self.table_state.values())
-        self.move_count = Grid().SIZE ** 2 - self.cells.count('_')
-        self.game_state = 'Game not finished'
+        self.board = self.grid.table if board is None else board
+        self.cells = ''.join(self.board.values())
+        self.move_count = self.grid.SIZE ** 2 - self.cells.count('_')
 
     def start(self):
         player1, player2 = self.menu.start()
         self.grid.draw_table(self.cells)
-        while not self.check_game_state():
+        while not self.check_win():
             self.move(player1, player2)
-            self.cells = ''.join(self.table_state.values())
+            self.cells = ''.join(self.board.values())
             self.grid.draw_table(self.cells)
 
-        print(self.game_state)
+        print(self.check_win())
 
     def move(self, player1, player2):
-        table_state = self.table_state
         # Player choose
         sign = 'X' if self.move_count % 2 == 0 else 'O'
         if sign == 'X':
-            cell = self.menu.make_move(table_state) if player1 == 'user' else self.ai.make_move(player1, table_state)
+            cell = self.menu.make_move(self.board) if player1 == 'user' else self.ai.make_move(player1, self.board)
         else:
-            cell = self.menu.make_move(table_state) if player2 == 'user' else self.ai.make_move(player2, table_state)
+            cell = self.menu.make_move(self.board) if player2 == 'user' else self.ai.make_move(player2, self.board)
         self.move_count += 1
-        self.table_state[cell] = sign
+        self.board[cell] = sign
 
-    def check_game_state(self, cells=None):
+    def check_win(self, cells=None):
         x_pattern = r'(?:X..X..X..|.X..X..X.|..X..X..X|XXX......|...XXX...|......XXX|X...X...X|..X.X.X..)$'
         o_pattern = r'(?:O..O..O..|.O..O..O.|..O..O..O|OOO......|...OOO...|......OOO|O...O...O|..O.O.O..)$'
         # For copy board check
         cells = self.cells if cells is None else cells
 
         if match(x_pattern, cells):
-            self.game_state = 'X wins'
-            return True
+            return 'X wins'
         if match(o_pattern, cells):
-            self.game_state = 'O wins'
-            return True
+            return 'O wins'
         if cells.find('_') == -1:
-            self.game_state = 'Draw'
-            return True
+            return 'Draw'
         return False
 
 
 class AI:
-    def make_move(self, level, table_state):
+    def make_move(self, level, board):
+        empty_cells = [coordinates for coordinates, state in board.items() if state == '_']
         if level == 'easy':
-            return self.easy(table_state)
+            return self.easy(empty_cells)
         if level == 'medium':
-            return self.medium(table_state)
+            return self.medium(board, empty_cells)
+        if level == 'hard':
+            return self.hard(board)
 
-    def easy(self, table_state):
-        empty_cells = [coordinates for coordinates, state in table_state.items() if state == '_']
+    def easy(self, empty_cells):
+
         coordinates = self.random_move(empty_cells)
         print('Making move level "easy"')
         return coordinates
 
-    def medium(self, table_state):
-        empty_cells = [coordinates for coordinates, state in table_state.items() if state == '_']
+    def medium(self, board, empty_cells):
         # Sim game to check win/lose positions
-        sim_game = Game(table_state.copy())
+        sim_game = Game(board.copy())
         signs = 'XO' if sim_game.move_count % 2 == 0 else 'OX'
-        # Win move search
+        # Win/not lose move search
         for sign in signs:
             for cell in empty_cells:
-                sim_game.table_state = table_state.copy()
-                sim_game.table_state[cell] = sign
-                cells = ''.join(sim_game.table_state.values())
-                if sim_game.check_game_state(cells):
+                sim_game.board[cell] = sign
+                cells = ''.join(sim_game.board.values())
+                if sim_game.check_win(cells):
                     print('Making move level "medium"')
                     return cell
+                else:
+                    sim_game.board[cell] = '_'
 
         print('Making move level "medium"')
         return self.random_move(empty_cells)
+
+    def hard(self, board):
+        sim_game = Game(board.copy())
+        signs = 'XO' if sim_game.move_count % 2 == 0 else 'OX'
+        # Minimax move search
+        best_move = self.minimax(sim_game, signs[0], signs)
+
+        print('Making move level "hard"')
+        print(best_move)
+        return best_move[0]
+
+    def minimax(self, game, player, signs):
+        cur_player, opponent = signs[0], signs[1]
+        empty_cells = [coordinates for coordinates, state in game.board.items() if state == '_']
+        if game.check_win() == f'{opponent} wins':
+            return (0, 0), -1
+        elif game.check_win() == f'{cur_player} wins':
+            return (0, 0), 1
+        elif game.move_count == Grid.SIZE**2:
+            return (0, 0), 0
+
+        moves = {}
+        for cell in empty_cells:
+            move = {}
+            game.board[cell] = player
+            if cur_player == player:
+                result = self.minimax(Game(game.board.copy()), opponent, signs)
+                move[cell] = result[1]
+            else:
+                result = self.minimax(Game(game.board.copy()), cur_player, signs)
+                move[cell] = result[1]
+
+            game.board[cell] = '_'
+
+            moves[cell] = move[cell]
+
+        if cur_player == player:
+            best_score = -100
+            for coords, score in moves.items():
+                if score > best_score:
+                    best_score = score
+                    best_move = (coords, score)
+        else:
+            best_score = 100
+            for coords, score in moves.items():
+                if score < best_score:
+                    best_score = score
+                    best_move = (coords, score)
+
+        return best_move
+
+
 
     @staticmethod
     def random_move(empty_cells):
@@ -91,7 +140,7 @@ class AI:
 
 class Menu:
     def start(self):
-        options = ('user', 'easy', 'medium')
+        options = ('user', 'easy', 'medium', 'hard')
         command = input('Input command: ').strip()
         if command == 'exit':
             exit()
